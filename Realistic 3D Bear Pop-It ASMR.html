@@ -1,0 +1,1029 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Realistic 3D Bear Pop-It ASMR</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Quicksand:wght@500;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        * {
+            font-family: 'Quicksand', sans-serif;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: manipulation;
+        }
+
+        .title-font {
+            font-family: 'Fredoka One', cursive;
+        }
+
+        /* Glassmorphism Styling */
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.75);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.8);
+        }
+
+        .glass-card {
+            background: rgba(255, 255, 255, 0.55);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.6);
+        }
+
+        /* Custom range slider thumb */
+        input[type=range] {
+            -webkit-appearance: none;
+            background: rgba(226, 232, 240, 0.8);
+            border-radius: 8px;
+            height: 6px;
+        }
+
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 18px;
+            width: 18px;
+            border-radius: 50%;
+            background: #f59e0b;
+            cursor: pointer;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+            transition: transform 0.1s ease;
+        }
+
+        input[type=range]::-webkit-slider-thumb:hover {
+            transform: scale(1.15);
+        }
+
+        /* Canvas Container */
+        .canvas-wrapper {
+            position: relative;
+            perspective: 1200px;
+        }
+
+        canvas {
+            touch-action: none;
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-amber-50 via-orange-100 to-rose-100 min-h-screen text-slate-800 flex flex-col justify-between overflow-x-hidden">
+
+    <!-- TOP HEADER -->
+    <header class="w-full max-w-5xl mx-auto px-4 py-3 flex justify-between items-center z-10">
+        <div class="flex items-center gap-3">
+            <div class="w-11 h-11 rounded-2xl bg-gradient-to-tr from-amber-500 to-orange-400 flex items-center justify-center text-white shadow-lg shadow-orange-500/30">
+                <i class="fa-solid fa-paw text-xl"></i>
+            </div>
+            <div>
+                <h1 class="title-font text-xl sm:text-2xl text-amber-950 tracking-wide leading-none">Bear Pop-It 3D</h1>
+                <p class="text-[11px] font-bold text-amber-800/70">Ultra-Realistic ASMR Silicone Toy</p>
+            </div>
+        </div>
+
+        <!-- Mode Buttons & Controls -->
+        <div class="flex items-center gap-2">
+            <button id="btn-sound-toggle" title="Toggle Sound" class="w-10 h-10 rounded-2xl glass-panel flex items-center justify-center text-amber-900 hover:bg-white shadow-sm transition active:scale-95">
+                <i class="fa-solid fa-volume-high text-lg" id="sound-icon"></i>
+            </button>
+            <button id="btn-settings" title="ASMR Audio Settings" class="w-10 h-10 rounded-2xl glass-panel flex items-center justify-center text-amber-900 hover:bg-white shadow-sm transition active:scale-95">
+                <i class="fa-solid fa-sliders text-lg"></i>
+            </button>
+        </div>
+    </header>
+
+    <!-- QUICK AUDIO ADJUSTMENT BAR -->
+    <div class="w-full max-w-5xl mx-auto px-4 mb-2">
+        <div class="glass-panel p-3 rounded-2xl flex flex-wrap items-center justify-between gap-4 text-xs font-bold text-slate-700 shadow-sm border border-white/80">
+            <div class="flex items-center gap-2 min-w-[130px] flex-1">
+                <i class="fa-solid fa-volume-high text-amber-600"></i>
+                <span class="whitespace-nowrap">Volume</span>
+                <input type="range" id="quick-volume" min="0" max="1" step="0.05" value="0.9" class="w-full">
+            </div>
+            <div class="flex items-center gap-2 min-w-[130px] flex-1">
+                <i class="fa-solid fa-music text-pink-500"></i>
+                <span class="whitespace-nowrap">Pitch</span>
+                <input type="range" id="quick-pitch" min="0.6" max="1.5" step="0.05" value="1.0" class="w-full">
+            </div>
+            <div class="flex items-center gap-2 min-w-[130px] flex-1">
+                <i class="fa-solid fa-drum text-emerald-600"></i>
+                <span class="whitespace-nowrap">Click Pitch</span>
+                <input type="range" id="quick-click" min="1000" max="4000" step="100" value="2400" class="w-full">
+            </div>
+        </div>
+    </div>
+
+    <!-- MAIN GAME WORKSPACE -->
+    <main class="flex-1 max-w-5xl w-full mx-auto px-4 py-2 flex flex-col md:flex-row items-center justify-center gap-6 z-0">
+
+        <!-- LEFT PANEL: STATS & CONTROLS -->
+        <div class="w-full md:w-56 flex md:flex-col justify-between gap-3">
+            <!-- Score & Streak -->
+            <div class="glass-panel p-4 rounded-3xl flex-1 flex flex-col justify-center items-center text-center border border-white">
+                <span class="text-[11px] font-bold text-amber-900/60 uppercase tracking-wider">Total Pops</span>
+                <span id="pop-count" class="title-font text-4xl text-amber-900 my-0.5">0</span>
+                <div class="flex items-center gap-1.5 text-xs text-orange-600 font-bold bg-orange-100/80 px-3 py-1 rounded-full mt-1">
+                    <i class="fa-solid fa-fire text-orange-500"></i> <span id="streak-count">0</span> Streak
+                </div>
+            </div>
+
+            <!-- Flip Board Button -->
+            <div class="glass-panel p-3.5 rounded-3xl flex flex-col gap-2 justify-center border border-white">
+                <button id="btn-flip" class="w-full py-3 px-4 rounded-2xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-bold shadow-lg shadow-orange-500/25 active:scale-95 transition flex items-center justify-center gap-2 text-sm">
+                    <i class="fa-solid fa-rotate-3d text-base"></i> 3D Flip Board
+                </button>
+                <button id="btn-reset" class="w-full py-2 px-4 rounded-2xl bg-slate-200/80 hover:bg-slate-300/80 text-slate-700 font-bold active:scale-95 transition text-xs flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-arrows-rotate"></i> Reset All
+                </button>
+            </div>
+        </div>
+
+        <!-- CENTER: CANVAS POP-IT TOY -->
+        <div class="canvas-wrapper flex-1 flex items-center justify-center w-full max-w-[420px] aspect-square relative">
+            <canvas id="popit-canvas" class="w-full h-full cursor-pointer rounded-3xl"></canvas>
+            
+            <!-- Game Mode Status Overlay Banner -->
+            <div id="game-status-banner" class="absolute top-4 left-1/2 transform -translate-x-1/2 glass-panel px-4 py-1.5 rounded-full text-xs font-bold text-amber-900 shadow-sm pointer-events-none hidden flex items-center gap-2">
+                <span id="banner-text">Free Play Mode</span>
+            </div>
+        </div>
+
+        <!-- RIGHT PANEL: GAME MODES & PALETTES -->
+        <div class="w-full md:w-56 flex md:flex-col justify-between gap-3">
+            <!-- Mode Selector -->
+            <div class="glass-panel p-4 rounded-3xl flex-1 flex flex-col gap-2.5 border border-white">
+                <span class="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Game Modes</span>
+                <button class="mode-btn active w-full py-2 px-3 rounded-2xl bg-amber-500 text-white font-bold text-xs flex items-center justify-between transition shadow-sm" data-mode="free">
+                    <span class="flex items-center gap-2"><i class="fa-solid fa-hand-pointer"></i> Free Play</span>
+                    <i class="fa-solid fa-check text-xs"></i>
+                </button>
+                <button class="mode-btn w-full py-2 px-3 rounded-2xl bg-slate-100/80 hover:bg-slate-200/80 text-slate-700 font-bold text-xs flex items-center justify-between transition" data-mode="speed">
+                    <span class="flex items-center gap-2"><i class="fa-solid fa-bolt text-amber-500"></i> Speed Pop</span>
+                    <span id="speed-timer" class="text-[10px] bg-slate-200 px-2 py-0.5 rounded-full">30s</span>
+                </button>
+                <button class="mode-btn w-full py-2 px-3 rounded-2xl bg-slate-100/80 hover:bg-slate-200/80 text-slate-700 font-bold text-xs flex items-center justify-between transition" data-mode="memory">
+                    <span class="flex items-center gap-2"><i class="fa-solid fa-brain text-purple-500"></i> Memory Light</span>
+                    <span id="memory-score" class="text-[10px] bg-slate-200 px-2 py-0.5 rounded-full">Lvl 1</span>
+                </button>
+            </div>
+
+            <!-- Color Palette Selector -->
+            <div class="glass-panel p-3.5 rounded-3xl flex flex-col gap-2 border border-white">
+                <span class="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Silicone Color</span>
+                <div class="grid grid-cols-3 gap-2">
+                    <button class="palette-btn active border-2 border-amber-600 rounded-2xl p-2 bg-amber-50 flex flex-col items-center gap-1 transition" data-palette="honey">
+                        <span class="w-5 h-5 rounded-full bg-gradient-to-tr from-amber-600 to-yellow-400 shadow-sm"></span>
+                        <span class="text-[10px] font-bold text-amber-900">Honey</span>
+                    </button>
+                    <button class="palette-btn border-2 border-transparent hover:border-pink-300 rounded-2xl p-2 bg-pink-50 flex flex-col items-center gap-1 transition" data-palette="pastelPink">
+                        <span class="w-5 h-5 rounded-full bg-gradient-to-tr from-pink-500 to-rose-300 shadow-sm"></span>
+                        <span class="text-[10px] font-bold text-pink-900">Pink</span>
+                    </button>
+                    <button class="palette-btn border-2 border-transparent hover:border-teal-300 rounded-2xl p-2 bg-teal-50 flex flex-col items-center gap-1 transition" data-palette="mintGreen">
+                        <span class="w-5 h-5 rounded-full bg-gradient-to-tr from-emerald-500 to-teal-300 shadow-sm"></span>
+                        <span class="text-[10px] font-bold text-teal-900">Mint</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- FOOTER -->
+    <footer class="w-full max-w-5xl mx-auto px-4 py-3 text-center text-xs text-amber-900/60 font-semibold flex justify-between items-center">
+        <span>🎧 Recommended headphones for pure ASMR sensory pop</span>
+        <span class="hidden sm:inline">Tactile Polymer Sub-surface Simulation</span>
+    </footer>
+
+    <!-- SETTINGS MODAL -->
+    <div id="settings-modal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-md z-50 flex items-center justify-center p-4 opacity-0 pointer-events-none transition-opacity duration-200">
+        <div class="glass-panel w-full max-w-sm rounded-3xl p-6 bg-white/95 shadow-2xl border border-white flex flex-col gap-4 transform scale-95 transition-transform duration-200" id="modal-content">
+            <div class="flex justify-between items-center border-b pb-3">
+                <h3 class="title-font text-lg text-slate-800 flex items-center gap-2">
+                    <i class="fa-solid fa-sliders text-amber-500"></i> ASMR Audio Tuning
+                </h3>
+                <button id="btn-close-modal" class="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-600">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <!-- Pitch Control -->
+            <div class="flex flex-col gap-1">
+                <div class="flex justify-between text-xs font-bold text-slate-600">
+                    <span>Base Pop Pitch</span>
+                    <span id="val-pitch">1.0x</span>
+                </div>
+                <input type="range" id="slider-pitch" min="0.5" max="1.6" step="0.05" value="1.0">
+            </div>
+
+            <!-- Click Resonance Pitch -->
+            <div class="flex flex-col gap-1">
+                <div class="flex justify-between text-xs font-bold text-slate-600">
+                    <span>Silicone Click Frequency</span>
+                    <span id="val-click">2400 Hz</span>
+                </div>
+                <input type="range" id="slider-click" min="1000" max="4000" step="100" value="2400">
+            </div>
+
+            <!-- Bass Boost / Sub-bass -->
+            <div class="flex flex-col gap-1">
+                <div class="flex justify-between text-xs font-bold text-slate-600">
+                    <span>Deep Vacuum Bass</span>
+                    <span id="val-bass">Medium</span>
+                </div>
+                <input type="range" id="slider-bass" min="20" max="120" step="5" value="50">
+            </div>
+
+            <!-- Master Volume -->
+            <div class="flex flex-col gap-1">
+                <div class="flex justify-between text-xs font-bold text-slate-600">
+                    <span>Master Volume</span>
+                    <span id="val-volume">90%</span>
+                </div>
+                <input type="range" id="slider-volume" min="0" max="1" step="0.05" value="0.9">
+            </div>
+
+            <button id="btn-save-settings" class="mt-2 w-full py-2.5 rounded-2xl bg-amber-500 hover:bg-amber-600 text-white font-bold text-sm shadow-md transition">
+                Apply & Save
+            </button>
+        </div>
+    </div>
+
+    <!-- AUDIO & CANVAS ENGINE JAVASCRIPT -->
+    <script>
+        /**
+         * 3D BEAR POP-IT ASMR ENGINE
+         * High-performance Canvas 2D/3D physics + Web Audio API synthesizer
+         */
+
+        // Audio System State
+        const audioState = {
+            enabled: true,
+            volume: 0.9,
+            pitch: 1.0,
+            clickFreq: 2400,
+            bassFreq: 50
+        };
+
+        // App Game State
+        const gameState = {
+            mode: 'free', // 'free', 'speed', 'memory'
+            palette: 'honey',
+            totalPops: 0,
+            streak: 0,
+            streakTimer: null,
+            flipAngle: 0, // for 3D flip animation (0 -> Math.PI)
+            isFlipping: false,
+            // Speed mode variables
+            speedTimer: 30,
+            speedInterval: null,
+            speedActive: false,
+            // Memory mode variables
+            memoryLevel: 1,
+            memorySequence: [],
+            playerSequence: [],
+            memoryActive: false
+        };
+
+        // Color Palettes (Rich silicone gradients)
+        const palettes = {
+            honey: {
+                base: '#e08a48',
+                shadow: '#824218',
+                light: '#f7c288',
+                rows: [
+                    { top: '#f59e0b', bottom: '#b45309' }, // Amber
+                    { top: '#f97316', bottom: '#c2410c' }, // Orange
+                    { top: '#ef4444', bottom: '#b91c1c' }, // Red
+                    { top: '#10b981', bottom: '#047857' }, // Emerald
+                    { top: '#06b6d4', bottom: '#0e7490' }  // Cyan
+                ]
+            },
+            pastelPink: {
+                base: '#e8829d',
+                shadow: '#873248',
+                light: '#fcd3de',
+                rows: [
+                    { top: '#f43f5e', bottom: '#be123c' },
+                    { top: '#ec4899', bottom: '#be185d' },
+                    { top: '#d946ef', bottom: '#a21caf' },
+                    { top: '#8b5cf6', bottom: '#6d28d9' },
+                    { top: '#6366f1', bottom: '#4338ca' }
+                ]
+            },
+            mintGreen: {
+                base: '#4fa893',
+                shadow: '#225246',
+                light: '#adf0e0',
+                rows: [
+                    { top: '#14b8a6', bottom: '#0f766e' },
+                    { top: '#06b6d4', bottom: '#0e7490' },
+                    { top: '#3b82f6', bottom: '#1d4ed8' },
+                    { top: '#eab308', bottom: '#a16207' },
+                    { top: '#f97316', bottom: '#c2410c' }
+                ]
+            }
+        };
+
+        // Grid Configuration (5 rows of bubbles on Bear Belly)
+        const GRID_ROWS = 5;
+        const GRID_COLS = 5;
+        let bubbles = []; // 2D array of bubble state objects
+
+        // Canvas Setup
+        const canvas = document.getElementById('popit-canvas');
+        const ctx = canvas.getContext('2d');
+        let dpr = window.devicePixelRatio || 1;
+
+        /**
+         * WEB AUDIO SYNTHESIZER FOR DUAL-LAYER SILICONE POPPING
+         */
+        let audioCtx = null;
+
+        function initAudio() {
+            if (!audioCtx) {
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                audioCtx = new AudioContext();
+            }
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+        }
+
+        function playPopAudio(isPopDown = true, pitchMod = 1.0) {
+            if (!audioState.enabled) return;
+            initAudio();
+
+            const now = audioCtx.currentTime;
+            const masterGain = audioCtx.createGain();
+            masterGain.gain.setValueAtTime(audioState.volume, now);
+            masterGain.connect(audioCtx.destination);
+
+            // ----------------------------------------------------
+            // LAYER 1: Silicone Surface Click (High-Frequency Transient)
+            // ----------------------------------------------------
+            const clickBuf = audioCtx.createBuffer(1, audioCtx.sampleRate * 0.01, audioCtx.sampleRate);
+            const clickData = clickBuf.getChannelData(0);
+            for (let i = 0; i < clickData.length; i++) {
+                clickData[i] = (Math.random() * 2 - 1) * Math.exp(-i / (audioCtx.sampleRate * 0.0015));
+            }
+
+            const clickSource = audioCtx.createBufferSource();
+            clickSource.buffer = clickBuf;
+
+            const clickFilter = audioCtx.createBiquadFilter();
+            clickFilter.type = 'bandpass';
+            clickFilter.frequency.setValueAtTime(audioState.clickFreq * (isPopDown ? 1.0 : 1.35), now);
+            clickFilter.Q.setValueAtTime(6.0, now);
+
+            const clickGain = audioCtx.createGain();
+            clickGain.gain.setValueAtTime(0.8, now);
+            clickGain.gain.exponentialRampToValueAtTime(0.001, now + 0.01);
+
+            clickSource.connect(clickFilter);
+            clickFilter.connect(clickGain);
+            clickGain.connect(masterGain);
+
+            // ----------------------------------------------------
+            // LAYER 2: Deep Vacuum Air Release Pop (Body Resonance)
+            // ----------------------------------------------------
+            const osc = audioCtx.createOscillator();
+            const oscGain = audioCtx.createGain();
+
+            let startFreq, endFreq, duration;
+
+            if (isPopDown) {
+                // Popping Down: Thumpy pitch drop (e.g. 150Hz -> 30Hz)
+                startFreq = (160 + Math.random() * 20) * audioState.pitch * pitchMod;
+                endFreq = audioState.bassFreq;
+                duration = 0.06;
+            } else {
+                // Popping Back Up: Bright pitch sweep up (e.g. 200Hz -> 360Hz)
+                startFreq = (190 + Math.random() * 20) * audioState.pitch * pitchMod;
+                endFreq = 380 * audioState.pitch * pitchMod;
+                duration = 0.045;
+            }
+
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(startFreq, now);
+            osc.frequency.exponentialRampToValueAtTime(Math.max(10, endFreq), now + duration);
+
+            oscGain.gain.setValueAtTime(1.0, now);
+            oscGain.gain.exponentialRampToValueAtTime(0.001, now + duration + 0.02);
+
+            osc.connect(oscGain);
+            oscGain.connect(masterGain);
+
+            // Start Audio Synthesis
+            clickSource.start(now);
+            osc.start(now);
+
+            clickSource.stop(now + 0.015);
+            osc.stop(now + duration + 0.03);
+        }
+
+        /**
+         * INITIALIZE BUBBLE GRID DATA
+         */
+        function initBubbles() {
+            bubbles = [];
+            for (let r = 0; r < GRID_ROWS; r++) {
+                bubbles[r] = [];
+                for (let c = 0; c < GRID_COLS; c++) {
+                    bubbles[r][c] = {
+                        popped: false,
+                        pressedAmount: 0, // 0 = fully convex, 1 = fully concave
+                        targetPressed: 0,
+                        highlight: false, // For memory / speed mode
+                        scale: 1.0
+                    };
+                }
+            }
+        }
+
+        /**
+         * RESIZE CANVAS WITH DPR CORRECTION
+         */
+        function resizeCanvas() {
+            const container = canvas.parentElement;
+            const size = Math.min(container.clientWidth, container.clientHeight);
+
+            canvas.width = size * dpr;
+            canvas.height = size * dpr;
+            canvas.style.width = `${size}px`;
+            canvas.style.height = `${size}px`;
+
+            ctx.scale(dpr, dpr);
+        }
+
+        /**
+         * REAL-TIME CANVAS 2D/3D RENDERING
+         */
+        function render() {
+            const width = canvas.width / dpr;
+            const height = canvas.height / dpr;
+            const centerX = width / 2;
+            const centerY = height / 2;
+
+            ctx.clearRect(0, 0, width, height);
+
+            ctx.save();
+
+            // 3D Flip Matrix Transformation
+            if (gameState.isFlipping) {
+                ctx.translate(centerX, centerY);
+                const scaleX = Math.cos(gameState.flipAngle);
+                ctx.scale(scaleX, 1);
+                ctx.translate(-centerX, -centerY);
+            }
+
+            const currentPalette = palettes[gameState.palette];
+
+            // 1. Draw Bear Silicone Body Base Shadow
+            ctx.save();
+            ctx.shadowColor = 'rgba(80, 35, 10, 0.35)';
+            ctx.shadowBlur = 24;
+            ctx.shadowOffsetY = 16;
+
+            drawBearSilhouette(ctx, centerX, centerY, width * 0.82, currentPalette.base, currentPalette.shadow);
+            ctx.restore();
+
+            // 2. Inner Silicone Glow & Subsurface Highlight
+            ctx.save();
+            drawBearSilhouetteOverlay(ctx, centerX, centerY, width * 0.82, currentPalette.light);
+            ctx.restore();
+
+            // 3. Draw Bear Facial Features (Ears, Eyes, Snout)
+            drawBearFacialFeatures(ctx, centerX, centerY, width * 0.82);
+
+            // 4. Draw Bubble Grid
+            drawBubbleGrid(ctx, centerX, centerY, width * 0.82);
+
+            ctx.restore();
+
+            // Smooth Interpolation Loop for Animations
+            updateAnimations();
+
+            requestAnimationFrame(render);
+        }
+
+        /**
+         * DRAW BEAR BODY SILHOUETTE
+         */
+        function drawBearSilhouette(ctx, cx, cy, size, baseColor, shadowColor) {
+            const radius = size * 0.42;
+
+            ctx.beginPath();
+            
+            // Left Ear
+            const earR = radius * 0.35;
+            ctx.arc(cx - radius * 0.72, cy - radius * 0.75, earR, 0, Math.PI * 2);
+            // Right Ear
+            ctx.arc(cx + radius * 0.72, cy - radius * 0.75, earR, 0, Math.PI * 2);
+
+            // Head/Body Rounded Silicone Block
+            ctx.roundRect(cx - radius, cy - radius * 0.8, radius * 2, radius * 2.1, [radius * 0.5]);
+
+            const grad = ctx.createLinearGradient(cx - radius, cy - radius, cx + radius, cy + radius);
+            grad.addColorStop(0, baseColor);
+            grad.addColorStop(1, shadowColor);
+
+            ctx.fillStyle = grad;
+            ctx.fill();
+
+            ctx.lineWidth = 4;
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
+            ctx.stroke();
+        }
+
+        /**
+         * DRAW BEAR INNER HIGHLIGHT
+         */
+        function drawBearSilhouetteOverlay(ctx, cx, cy, size, lightColor) {
+            const radius = size * 0.42;
+
+            // Inner Ear Pink Cuts
+            ctx.fillStyle = lightColor;
+            ctx.beginPath();
+            ctx.arc(cx - radius * 0.72, cy - radius * 0.75, radius * 0.2, 0, Math.PI * 2);
+            ctx.arc(cx + radius * 0.72, cy - radius * 0.75, radius * 0.2, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        /**
+         * DRAW BEAR FACE DETAILS
+         */
+        function drawBearFacialFeatures(ctx, cx, cy, size) {
+            const radius = size * 0.42;
+            const topY = cy - radius * 0.52;
+
+            // Eyes
+            ctx.fillStyle = '#2d1606';
+            ctx.beginPath();
+            ctx.arc(cx - radius * 0.38, topY, 5, 0, Math.PI * 2);
+            ctx.arc(cx + radius * 0.38, topY, 5, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Eye Glint
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath();
+            ctx.arc(cx - radius * 0.38 + 1.5, topY - 1.5, 1.8, 0, Math.PI * 2);
+            ctx.arc(cx + radius * 0.38 + 1.5, topY - 1.5, 1.8, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Cute Snout
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
+            ctx.beginPath();
+            ctx.ellipse(cx, topY + 12, 16, 12, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Nose
+            ctx.fillStyle = '#2d1606';
+            ctx.beginPath();
+            ctx.ellipse(cx, topY + 8, 6, 4, 0, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        /**
+         * DRAW 3D SILICONE BUBBLE GRID
+         */
+        function drawBubbleGrid(ctx, cx, cy, size) {
+            const palette = palettes[gameState.palette];
+            const startY = cy - size * 0.22;
+            const spacingX = size * 0.15;
+            const spacingY = size * 0.14;
+            const bubbleRadius = size * 0.062;
+
+            for (let r = 0; r < GRID_ROWS; r++) {
+                const rowY = startY + r * spacingY;
+                const rowColors = palette.rows[r];
+
+                for (let c = 0; c < GRID_COLS; c++) {
+                    const colX = cx + (c - (GRID_COLS - 1) / 2) * spacingX;
+                    const bubble = bubbles[r][c];
+
+                    ctx.save();
+                    ctx.translate(colX, rowY);
+
+                    // Draw Single 3D Bubble
+                    drawSingleBubble(ctx, bubbleRadius, bubble, rowColors);
+
+                    ctx.restore();
+                }
+            }
+        }
+
+        /**
+         * DRAW HIGH-REALISM 3D BUBBLE WITH SPECULAR HIGHLIGHTS
+         */
+        function drawSingleBubble(ctx, r, bubble, colors) {
+            const p = bubble.pressedAmount; // 0 = Convex (up), 1 = Concave (down)
+
+            // 1. Socket Outer Ring Depression
+            ctx.beginPath();
+            ctx.arc(0, 0, r + 2, 0, Math.PI * 2);
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.18)';
+            ctx.fill();
+
+            // 2. Dynamic Depth Shadow Inside Socket
+            ctx.beginPath();
+            ctx.arc(0, p * 2, r, 0, Math.PI * 2);
+
+            let bgGrad;
+            if (p < 0.5) {
+                // Convex (Unpopped Dome)
+                bgGrad = ctx.createRadialGradient(-r * 0.3, -r * 0.3, r * 0.1, 0, 0, r);
+                bgGrad.addColorStop(0, '#ffffff');
+                bgGrad.addColorStop(0.25, colors.top);
+                bgGrad.addColorStop(1, colors.bottom);
+            } else {
+                // Concave (Popped Inward)
+                bgGrad = ctx.createRadialGradient(0, 0, r * 0.1, 0, 0, r);
+                bgGrad.addColorStop(0, colors.bottom);
+                bgGrad.addColorStop(0.85, colors.top);
+                bgGrad.addColorStop(1, '#ffffff');
+            }
+
+            ctx.fillStyle = bgGrad;
+            ctx.fill();
+
+            // 3. Highlight Glow Mode (Speed / Memory Active Target)
+            if (bubble.highlight) {
+                ctx.beginPath();
+                ctx.arc(0, 0, r + 4, 0, Math.PI * 2);
+                ctx.lineWidth = 3;
+                ctx.strokeStyle = '#ffffff';
+                ctx.stroke();
+
+                ctx.shadowColor = '#ffffff';
+                ctx.shadowBlur = 12;
+                ctx.stroke();
+            }
+
+            // 4. Glossy Surface Reflection Specular Arc
+            if (p < 0.5) {
+                ctx.beginPath();
+                ctx.arc(0, 0, r * 0.7, Math.PI * 1.1, Math.PI * 1.8);
+                ctx.lineWidth = r * 0.2;
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.45)';
+                ctx.stroke();
+            } else {
+                // Inner Socket Rim Light
+                ctx.beginPath();
+                ctx.arc(0, 2, r * 0.8, 0, Math.PI);
+                ctx.lineWidth = 2;
+                ctx.strokeStyle = 'rgba(0, 0, 0, 0.25)';
+                ctx.stroke();
+            }
+        }
+
+        /**
+         * ANIMATION INTERPOLATION
+         */
+        function updateAnimations() {
+            for (let r = 0; r < GRID_ROWS; r++) {
+                for (let c = 0; c < GRID_COLS; c++) {
+                    const b = bubbles[r][c];
+                    // Smooth lerp for pressed state
+                    b.pressedAmount += (b.targetPressed - b.pressedAmount) * 0.35;
+                }
+            }
+
+            if (gameState.isFlipping) {
+                gameState.flipAngle += 0.18;
+                if (gameState.flipAngle >= Math.PI) {
+                    gameState.flipAngle = 0;
+                    gameState.isFlipping = false;
+                }
+            }
+        }
+
+        /**
+         * HANDLE BUBBLE INTERACTION AT CANVAS COORDINATES
+         */
+        function handlePointer(e) {
+            if (gameState.isFlipping) return;
+
+            const rect = canvas.getBoundingClientRect();
+            const x = (e.clientX - rect.left);
+            const y = (e.clientY - rect.top);
+
+            const width = canvas.width / dpr;
+            const height = canvas.height / dpr;
+            const cx = width / 2;
+            const cy = height / 2;
+            const size = width * 0.82;
+
+            const startY = cy - size * 0.22;
+            const spacingX = size * 0.15;
+            const spacingY = size * 0.14;
+            const bubbleRadius = size * 0.07;
+
+            for (let r = 0; r < GRID_ROWS; r++) {
+                const rowY = startY + r * spacingY;
+                for (let c = 0; c < GRID_COLS; c++) {
+                    const colX = cx + (c - (GRID_COLS - 1) / 2) * spacingX;
+
+                    const dx = x - colX;
+                    const dy = y - rowY;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+
+                    if (dist <= bubbleRadius) {
+                        triggerBubblePop(r, c);
+                        return;
+                    }
+                }
+            }
+        }
+
+        /**
+         * POP BUBBLE LOGIC
+         */
+        function triggerBubblePop(r, c) {
+            const bubble = bubbles[r][c];
+            const newPoppedState = !bubble.popped;
+
+            bubble.popped = newPoppedState;
+            bubble.targetPressed = newPoppedState ? 1.0 : 0.0;
+
+            // Audio Synthesis
+            playPopAudio(newPoppedState, 0.95 + (r * 0.04));
+
+            // Haptic Feedback
+            if (navigator.vibrate) {
+                navigator.vibrate(newPoppedState ? 12 : 8);
+            }
+
+            // Stats
+            gameState.totalPops++;
+            gameState.streak++;
+            updateStatsUI();
+
+            clearTimeout(gameState.streakTimer);
+            gameState.streakTimer = setTimeout(() => {
+                gameState.streak = 0;
+                updateStatsUI();
+            }, 1500);
+
+            // Game Mode Mechanics Logic
+            if (gameState.mode === 'speed' && gameState.speedActive) {
+                if (bubble.highlight) {
+                    bubble.highlight = false;
+                    spawnRandomSpeedHighlight();
+                }
+            } else if (gameState.mode === 'memory' && gameState.memoryActive) {
+                checkMemoryInput(r, c);
+            }
+        }
+
+        /**
+         * 3D FLIP BOARD ACTION (Mass Pop Cascade Sound)
+         */
+        function flipBoard() {
+            if (gameState.isFlipping) return;
+
+            initAudio();
+            gameState.isFlipping = true;
+            gameState.flipAngle = 0;
+
+            // Reset all bubbles halfway through flip
+            setTimeout(() => {
+                for (let r = 0; r < GRID_ROWS; r++) {
+                    for (let c = 0; c < GRID_COLS; c++) {
+                        bubbles[r][c].popped = false;
+                        bubbles[r][c].targetPressed = 0.0;
+                    }
+                }
+
+                // Rapid sound cascade
+                for (let i = 0; i < 8; i++) {
+                    setTimeout(() => {
+                        playPopAudio(false, 0.8 + Math.random() * 0.5);
+                    }, i * 35);
+                }
+            }, 250);
+        }
+
+        function resetAll() {
+            for (let r = 0; r < GRID_ROWS; r++) {
+                for (let c = 0; c < GRID_COLS; c++) {
+                    bubbles[r][c].popped = false;
+                    bubbles[r][c].targetPressed = 0.0;
+                    bubbles[r][c].highlight = false;
+                }
+            }
+            playPopAudio(false, 0.9);
+        }
+
+        function updateStatsUI() {
+            document.getElementById('pop-count').innerText = gameState.totalPops;
+            document.getElementById('streak-count').innerText = gameState.streak;
+        }
+
+        /**
+         * SPEED POP MODE
+         */
+        function startSpeedMode() {
+            gameState.speedActive = true;
+            gameState.speedTimer = 30;
+            resetAll();
+            spawnRandomSpeedHighlight();
+
+            clearInterval(gameState.speedInterval);
+            gameState.speedInterval = setInterval(() => {
+                gameState.speedTimer--;
+                document.getElementById('speed-timer').innerText = `${gameState.speedTimer}s`;
+
+                if (gameState.speedTimer <= 0) {
+                    clearInterval(gameState.speedInterval);
+                    gameState.speedActive = false;
+                    alert(`🎉 Speed Challenge Completed! Total Pops: ${gameState.totalPops}`);
+                    setGameMode('free');
+                }
+            }, 1000);
+        }
+
+        function spawnRandomSpeedHighlight() {
+            const r = Math.floor(Math.random() * GRID_ROWS);
+            const c = Math.floor(Math.random() * GRID_COLS);
+            bubbles[r][c].highlight = true;
+        }
+
+        /**
+         * MEMORY LIGHT-UP GAME MODE
+         */
+        function startMemoryMode() {
+            gameState.memoryActive = true;
+            gameState.memoryLevel = 1;
+            gameState.memorySequence = [];
+            document.getElementById('memory-score').innerText = `Lvl ${gameState.memoryLevel}`;
+            nextMemoryRound();
+        }
+
+        function nextMemoryRound() {
+            gameState.playerSequence = [];
+            resetAll();
+
+            // Add new step
+            const r = Math.floor(Math.random() * GRID_ROWS);
+            const c = Math.floor(Math.random() * GRID_COLS);
+            gameState.memorySequence.push({ r, c });
+
+            // Play sequence preview
+            let step = 0;
+            const seqInterval = setInterval(() => {
+                if (step > 0) {
+                    const prev = gameState.memorySequence[step - 1];
+                    bubbles[prev.r][prev.c].highlight = false;
+                }
+
+                if (step < gameState.memorySequence.length) {
+                    const current = gameState.memorySequence[step];
+                    bubbles[current.r][current.c].highlight = true;
+                    playPopAudio(true, 1.2);
+                    step++;
+                } else {
+                    clearInterval(seqInterval);
+                }
+            }, 600);
+        }
+
+        function checkMemoryInput(r, c) {
+            const stepIndex = gameState.playerSequence.length;
+            const target = gameState.memorySequence[stepIndex];
+
+            if (target && target.r === r && target.c === c) {
+                gameState.playerSequence.push({ r, c });
+                if (gameState.playerSequence.length === gameState.memorySequence.length) {
+                    gameState.memoryLevel++;
+                    document.getElementById('memory-score').innerText = `Lvl ${gameState.memoryLevel}`;
+                    setTimeout(nextMemoryRound, 800);
+                }
+            } else {
+                alert('❌ Incorrect Sequence! Game Over.');
+                setGameMode('free');
+            }
+        }
+
+        /**
+         * MODE SETTER
+         */
+        function setGameMode(mode) {
+            gameState.mode = mode;
+
+            // Clear existing intervals
+            clearInterval(gameState.speedInterval);
+            gameState.speedActive = false;
+            gameState.memoryActive = false;
+
+            document.querySelectorAll('.mode-btn').forEach(btn => {
+                if (btn.dataset.mode === mode) {
+                    btn.classList.add('bg-amber-500', 'text-white', 'active');
+                    btn.classList.remove('bg-slate-100/80', 'text-slate-700');
+                } else {
+                    btn.classList.remove('bg-amber-500', 'text-white', 'active');
+                    btn.classList.add('bg-slate-100/80', 'text-slate-700');
+                }
+            });
+
+            if (mode === 'speed') startSpeedMode();
+            else if (mode === 'memory') startMemoryMode();
+            else resetAll();
+        }
+
+        /**
+         * EVENT LISTENERS INITIALIZATION
+         */
+        function initEvents() {
+            window.addEventListener('resize', resizeCanvas);
+
+            canvas.addEventListener('pointerdown', (e) => {
+                e.preventDefault();
+                handlePointer(e);
+            });
+
+            document.getElementById('btn-flip').addEventListener('click', flipBoard);
+            document.getElementById('btn-reset').addEventListener('click', resetAll);
+
+            // Mute / Sound Toggle
+            document.getElementById('btn-sound-toggle').addEventListener('click', () => {
+                audioState.enabled = !audioState.enabled;
+                const icon = document.getElementById('sound-icon');
+                icon.className = audioState.enabled ? 'fa-solid fa-volume-high text-lg' : 'fa-solid fa-volume-xmark text-lg opacity-50';
+            });
+
+            // Modes
+            document.querySelectorAll('.mode-btn').forEach(btn => {
+                btn.addEventListener('click', () => setGameMode(btn.dataset.mode));
+            });
+
+            // Palettes
+            document.querySelectorAll('.palette-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    gameState.palette = btn.dataset.palette;
+                    document.querySelectorAll('.palette-btn').forEach(b => {
+                        b.classList.remove('border-amber-600', 'active');
+                        b.classList.add('border-transparent');
+                    });
+                    btn.classList.add('border-amber-600', 'active');
+                    btn.classList.remove('border-transparent');
+                });
+            });
+
+            // Quick Audio Controls Sync
+            document.getElementById('quick-volume').addEventListener('input', e => audioState.volume = parseFloat(e.target.value));
+            document.getElementById('quick-pitch').addEventListener('input', e => audioState.pitch = parseFloat(e.target.value));
+            document.getElementById('quick-click').addEventListener('input', e => audioState.clickFreq = parseFloat(e.target.value));
+
+            // Modal Controls
+            const modal = document.getElementById('settings-modal');
+            const modalContent = document.getElementById('modal-content');
+
+            document.getElementById('btn-settings').addEventListener('click', () => {
+                modal.classList.remove('opacity-0', 'pointer-events-none');
+                modalContent.classList.remove('scale-95');
+                modalContent.classList.add('scale-100');
+            });
+
+            const closeModal = () => {
+                modal.classList.add('opacity-0', 'pointer-events-none');
+                modalContent.classList.remove('scale-100');
+                modalContent.classList.add('scale-95');
+            };
+
+            document.getElementById('btn-close-modal').addEventListener('click', closeModal);
+            document.getElementById('btn-save-settings').addEventListener('click', closeModal);
+
+            document.getElementById('slider-volume').addEventListener('input', e => {
+                audioState.volume = parseFloat(e.target.value);
+                document.getElementById('val-volume').innerText = `${Math.round(audioState.volume * 100)}%`;
+            });
+            document.getElementById('slider-pitch').addEventListener('input', e => {
+                audioState.pitch = parseFloat(e.target.value);
+                document.getElementById('val-pitch').innerText = `${audioState.pitch.toFixed(2)}x`;
+            });
+            document.getElementById('slider-click').addEventListener('input', e => {
+                audioState.clickFreq = parseFloat(e.target.value);
+                document.getElementById('val-click').innerText = `${audioState.clickFreq} Hz`;
+            });
+            document.getElementById('slider-bass').addEventListener('input', e => {
+                audioState.bassFreq = parseFloat(e.target.value);
+                document.getElementById('val-bass').innerText = audioState.bassFreq < 40 ? 'Deep' : 'Medium';
+            });
+        }
+
+        // Window Load Handler
+        window.onload = function () {
+            initBubbles();
+            resizeCanvas();
+            initEvents();
+            requestAnimationFrame(render);
+        };
+    </script>
+</body>
+</html>

@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="th"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<title>Game Hub 10 เกม</title>
+<style>
+:root{--bg:#0e1118;--tx:#eef1f7}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--tx);font-family:'Noto Sans Thai',system-ui,sans-serif;overflow:hidden;overscroll-behavior:none}
+#menu{position:fixed;inset:0;overflow-y:auto;padding:max(18px,env(safe-area-inset-top)) 16px max(24px,env(safe-area-inset-bottom))}
+h1{margin:4px 0 2px;font-size:28px;text-align:center}
+.sub{text-align:center;opacity:.65;margin:0 0 18px;font-size:14px}
+.zone{max-width:760px;margin:0 auto 22px;padding:14px;border-radius:20px}
+.zone.s{background:linear-gradient(160deg,#2a1118,#1a0e18);border:1px solid #ff4d5e55}
+.zone.r{background:linear-gradient(160deg,#0f2b2e,#12253a);border:1px solid #5fe3c155}
+.zone h2{margin:0 0 4px;font-size:20px}
+.zone.s h2{color:#ff6b7a}.zone.r h2{color:#6ff0cd}
+.zone p{margin:0 0 12px;font-size:13px;opacity:.7}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:10px}
+.card{all:unset;cursor:pointer;display:block;padding:12px 14px;border-radius:14px;background:#ffffff10;border:1px solid #ffffff18}
+.card:active{transform:scale(.97);background:#ffffff1c}
+.card b{font-size:16px}
+.card i{font-style:normal;font-size:24px;float:right}
+.card span{display:block;font-size:12.5px;opacity:.72;margin:4px 0 8px}
+.tag{display:inline-block;font-size:11.5px;padding:2px 9px;border-radius:99px;background:#ffffff18}
+.tag.two{background:#ffb02e;color:#241a00;font-weight:700}
+#cv{position:fixed;inset:0;width:100%;height:100%;display:none;touch-action:none}
+#back{position:fixed;left:6px;top:50%;margin-top:-20px;width:40px;height:40px;border-radius:50%;border:0;background:#ffffff26;color:#fff;font-size:18px;display:none;z-index:5}
+#toast{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);background:#000a;color:#fff;padding:12px 18px;border-radius:14px;max-width:80%;text-align:center;font-size:15px;pointer-events:none;opacity:0;transition:opacity .4s;z-index:4}
+</style></head><body>
+<div id="menu">
+<h1>🎮 Game Hub 10 เกม</h1>
+<p class="sub">โซนจริงจัง 5 เกม (เล่น 2 นิ้ว 3 เกม) และโซนผ่อนคลาย 5 เกม (เล่น 2 นิ้ว 1 เกม)</p>
+<div class="zone s"><h2>🔥 โซนจริงจัง</h2><p>แข่งกันเอาจริง ห้ามพลาด</p><div class="grid" id="gs"></div></div>
+<div class="zone r"><h2>🌿 โซนผ่อนคลาย</h2><p>ไม่มีแพ้ ไม่มีชนะ เล่นเพลินๆ</p><div class="grid" id="gr"></div></div>
+</div>
+<canvas id="cv"></canvas>
+<button id="back" aria-label="กลับเมนู">✕</button>
+<div id="toast"></div>
+<script>
+const $=id=>document.getElementById(id),R=Math.random,cv=$('cv'),x=cv.getContext('2d');
+let W,H,g,last=0,dn={},s,ac,tt;
+function rs(){const d=devicePixelRatio||1;W=innerWidth;H=innerHeight;cv.width=W*d;cv.height=H*d;x.setTransform(d,0,0,d,0,0)}
+rs();addEventListener('resize',rs);
+const now=()=>performance.now();
+const txt=(t,px,py,sz,c='#fff')=>{x.fillStyle=c;x.font=`700 ${sz}px 'Noto Sans Thai',sans-serif`;x.textAlign='center';x.textBaseline='middle';x.fillText(t,px,py)};
+const half=(k,t,sz,off=0,c='#fff')=>{if(k)txt(t,W/2,H*.75+off,sz,c);else{x.save();x.translate(W/2,H*.25);x.rotate(Math.PI);txt(t,0,off,sz,c);x.restore()}};
+const circ=(a,b,r,f)=>{x.beginPath();x.arc(a,b,r,0,7);x.fillStyle=f;x.fill()};
+const hi=(k,v)=>{try{const b=Math.max(+localStorage['gh'+k]||0,v);localStorage['gh'+k]=b;return b}catch(e){return v}};
+const tone=(f,v=.15)=>{try{ac=ac||new AudioContext();const o=ac.createOscillator(),n=ac.createGain(),t=ac.currentTime;o.frequency.value=f;o.connect(n);n.connect(ac.destination);n.gain.setValueAtTime(v,t);n.gain.exponentialRampToValueAtTime(.001,t+1.6);o.start();o.stop(t+1.7)}catch(e){}};
+const bgGrad=(a,b)=>{const q=x.createLinearGradient(0,0,0,H);q.addColorStop(0,a);q.addColorStop(1,b);x.fillStyle=q;x.fillRect(0,0,W,H)};
+const lock=()=>now()-s.te>900;
+
+/* ---------- Pong helpers ---------- */
+const sv=d=>{s.bx=W/2;s.by=H/2;s.vx=(R()-.5)*240;s.vy=d*H*.42;s.hold=.8};
+const pmv=(p,d)=>{if(s.w>=0){if(d&&lock())restart();return}s.a[p.y<H/2?0:1]=p.x};
+/* ---------- Bubble / Ripple helpers ---------- */
+const bp=p=>{for(let i=s.b.length;i--;){const o=s.b[i];if(Math.hypot(p.x-o.x,p.y-o.y)<o.r){s.b.splice(i,1);s.n++;for(let k=0;k<10;k++){const a=R()*6.28;s.pt.push({x:o.x,y:o.y,vx:Math.cos(a)*120,vy:Math.sin(a)*120,l:.5,h:o.h})}return}}};
+const dr=(px,py,v)=>{const sc=[262,294,330,392,440,523,587,659,784,880];tone(sc[Math.min(9,px/W*10|0)],v);s.r.push({x:px,y:py,r:4,a:1,h:170+px/W*120})};
+
+const G=[
+/* ================= โซนจริงจัง ================= */
+{n:'Reaction Duel',ic:'⚡',z:'s',p:2,ds:'รอไฟเขียวแล้วแตะให้เร็วที่สุด แตะก่อนเวลา = เสียแต้ม ใครได้ 3 แต้มก่อนชนะ',
+i(){s={t:1.5+R()*2.5,ph:0,sc:[0,0],w:-1,fs:0,te:0}},
+u(dt){if(s.ph==0){s.t-=dt;if(s.t<=0)s.ph=1}else if(s.ph==2){s.t-=dt;if(s.t<=0){if(s.sc[0]>=3||s.sc[1]>=3){s.ph=3;s.te=now()}else{s.ph=0;s.t=1.5+R()*2.5}}}},
+down(p){const k=p.y<H/2?0:1;if(s.ph==0){s.sc[1-k]++;s.w=1-k;s.ph=2;s.t=1.2;s.fs=1}else if(s.ph==1){s.sc[k]++;s.w=k;s.ph=2;s.t=1.2;s.fs=0}else if(s.ph==3&&lock())restart()},
+d(){const go=s.ph==1;x.fillStyle=go?'#14c76b':'#3a1620';x.fillRect(0,0,W,H/2);x.fillStyle=go?'#14c76b':'#12233f';x.fillRect(0,H/2,W,H/2);x.fillStyle='#fff3';x.fillRect(0,H/2-1,W,2);
+for(let k=0;k<2;k++){let t;if(s.ph==0)t='รอไฟเขียว...';else if(s.ph==1)t='แตะเลย!!';else if(s.ph==3)t=s.w==k?'🏆 ชนะ!':'แพ้';else if(s.fs&&s.w!=k)t='แตะก่อนเวลา!';else t=s.w==k?'เร็วกว่า! +1':'ช้ากว่า';
+half(k,t,34);half(k,s.sc[k]+' แต้ม (ถึง 3 ชนะ)',16,46,'#fffa');if(s.ph==3)half(k,'แตะเพื่อเล่นใหม่',15,-46,'#fff9')}}},
+
+{n:'ชักเย่อรัวนิ้ว',ic:'🪢',z:'s',p:2,ds:'แตะฝั่งตัวเองรัวๆ เพื่อดันเส้นไปให้สุดฝั่งตรงข้าม',
+i(){s={o:0,w:-1,te:0}},
+down(p){if(s.w>=0){if(lock())restart();return}const k=p.y<H/2?0:1;s.o+=k?-.04:.04;if(s.o>=1){s.o=1;s.w=0;s.te=now()}if(s.o<=-1){s.o=-1;s.w=1;s.te=now()}},
+d(){const ly=H/2+s.o*H/2;x.fillStyle='#e8344a';x.fillRect(0,0,W,ly);x.fillStyle='#2f7bff';x.fillRect(0,ly,W,H-ly);x.fillStyle='#fff';x.fillRect(0,ly-3,W,6);
+for(let k=0;k<2;k++){half(k,s.w<0?'แตะรัวๆ!':s.w==k?'🏆 ชนะ!':'แพ้',s.w<0?30:38);if(s.w>=0)half(k,'แตะเพื่อเล่นใหม่',15,-46,'#fff9')}}},
+
+{n:'Pong 2 คน',ic:'🏓',z:'s',p:2,ds:'ลากนิ้วฝั่งตัวเองเพื่อขยับไม้ตีลูก ใครได้ 5 แต้มก่อนชนะ',
+i(){s={a:[W/2,W/2],sc:[0,0],w:-1,te:0,pw:Math.min(120,W*.32)};sv(1)},
+u(dt){if(s.w>=0)return;if(s.hold>0){s.hold-=dt;return}s.bx+=s.vx*dt;s.by+=s.vy*dt;
+if(s.bx<8){s.bx=8;s.vx=Math.abs(s.vx)}if(s.bx>W-8){s.bx=W-8;s.vx=-Math.abs(s.vx)}
+if(s.by<52&&s.vy<0&&Math.abs(s.bx-s.a[0])<s.pw/2+8){s.vy=Math.min(H*1.3,-s.vy*1.07);s.vx+=(s.bx-s.a[0])*5;s.by=52}
+if(s.by>H-52&&s.vy>0&&Math.abs(s.bx-s.a[1])<s.pw/2+8){s.vy=-Math.min(H*1.3,s.vy*1.07);s.vx+=(s.bx-s.a[1])*5;s.by=H-52}
+if(s.by<-10){s.sc[1]++;if(s.sc[1]>=5){s.w=1;s.te=now()}else sv(-1)}
+if(s.by>H+10){s.sc[0]++;if(s.sc[0]>=5){s.w=0;s.te=now()}else sv(1)}},
+down(p){pmv(p,1)},move(p){pmv(p,0)},
+d(){x.fillStyle='#0c1424';x.fillRect(0,0,W,H);x.fillStyle='#fff2';for(let i=0;i<W;i+=24)x.fillRect(i,H/2-1,12,2);
+for(let k=0;k<2;k++)half(k,s.sc[k],80,0,'#ffffff1c');
+x.fillStyle='#ff5468';x.fillRect(s.a[0]-s.pw/2,30,s.pw,12);x.fillStyle='#4d8dff';x.fillRect(s.a[1]-s.pw/2,H-42,s.pw,12);circ(s.bx,s.by,8,'#fff');
+if(s.w>=0)for(let k=0;k<2;k++){half(k,s.w==k?'🏆 ชนะ!':'แพ้',38);half(k,'แตะเพื่อเล่นใหม่',15,-46,'#fff9')}}},
+
+{n:'หลบบล็อก',ic:'🧱',z:'s',p:1,ds:'วางนิ้วแล้วลากเพื่อพาจุดขาวหลบบล็อกที่ตกลงมา อยู่ให้นานที่สุด',
+i(){s={px:W/2,py:H*.75,k:[],t:0,sc:0,dead:0,bs:0}},
+u(dt){if(s.dead)return;s.sc+=dt;s.t-=dt;if(s.t<=0){s.t=Math.max(.16,.7-s.sc*.012);const w=30+R()*50;s.k.push({x:R()*(W-w),y:-60,w,h:w*.6+10,v:180+s.sc*6+R()*100})}
+s.k.forEach(o=>{o.y+=o.v*dt;if(s.px>o.x-10&&s.px<o.x+o.w+10&&s.py>o.y-10&&s.py<o.y+o.h+10&&!s.dead){s.dead=now();s.bs=hi('dg',Math.floor(s.sc))}});s.k=s.k.filter(o=>o.y<H+80)},
+down(p){if(s.dead){if(now()-s.dead>600)restart();return}s.px=p.x;s.py=p.y-70},
+move(p){if(!s.dead){s.px=p.x;s.py=p.y-70}},
+d(){x.fillStyle='#140b1a';x.fillRect(0,0,W,H);x.fillStyle='#ff4d5e';s.k.forEach(o=>x.fillRect(o.x,o.y,o.w,o.h));
+if(!s.dead){x.shadowColor='#fff';x.shadowBlur=14;circ(s.px,s.py,11,'#fff');x.shadowBlur=0}
+txt('⏱ '+s.sc.toFixed(1)+' วิ',W/2,40,24);
+if(s.dead){x.fillStyle='#000a';x.fillRect(0,0,W,H);txt('ชนแล้ว! รอดได้ '+s.sc.toFixed(1)+' วิ',W/2,H/2-20,28);txt('สถิติ '+s.bs+' วิ · แตะเพื่อเล่นใหม่',W/2,H/2+25,16,'#fffb')}}},
+
+{n:'ยิงเป้าไว',ic:'🎯',z:'s',p:1,ds:'30 วินาที แตะเป้าก่อนมันหดหายไป ยิ่งแม่นยิ่งดี',
+i(){s={t:30,h:0,m:0,end:0,bs:0};this.nt()},
+nt(){s.tg={x:50+R()*(W-100),y:110+R()*(H-200),r:46,life:1.4,age:0}},
+u(dt){if(s.end)return;s.t-=dt;if(s.t<=0){s.end=now();s.bs=hi('aim',s.h);return}s.tg.age+=dt;if(s.tg.age>s.tg.life){s.m++;this.nt()}},
+down(p){if(s.end){if(now()-s.end>600)restart();return}const t=s.tg;if(Math.hypot(p.x-t.x,p.y-t.y)<t.r+10){s.h++;this.nt()}else s.m++},
+d(){x.fillStyle='#150f1c';x.fillRect(0,0,W,H);const tot=s.h+s.m;txt('⏱ '+Math.max(0,s.t).toFixed(1)+'   🎯 '+s.h,W/2,40,24);
+if(s.end){txt('หมดเวลา! โดน '+s.h+' ครั้ง',W/2,H/2-30,32);txt('แม่นยำ '+(tot?Math.round(s.h/tot*100):0)+'% · สถิติ '+s.bs,W/2,H/2+15,18,'#fffb');txt('แตะเพื่อเล่นใหม่',W/2,H/2+60,16,'#fff9');return}
+const t=s.tg,r=t.r*(1-t.age/t.life*.65);circ(t.x,t.y,t.r,'#ffffff12');circ(t.x,t.y,r,'#ff4d5e');circ(t.x,t.y,r*.6,'#fff');circ(t.x,t.y,r*.25,'#ff4d5e')}},
+
+/* ================= โซนผ่อนคลาย ================= */
+{n:'ลูกโป่งฟอง',ic:'🫧',z:'r',p:1,ds:'แตะหรือลากนิ้วผ่านฟองสบู่เพื่อให้มันแตก ไม่มีเวลา ไม่มีแพ้',
+i(){s={b:[],pt:[],n:0,t:0}},
+u(dt){s.t-=dt;if(s.t<=0){s.t=.35+R()*.4;s.b.push({x:R()*W,y:H+40,r:20+R()*30,v:40+R()*50,ph:R()*6,h:170+R()*120})}
+s.b.forEach(o=>{o.y-=o.v*dt;o.ph+=dt;o.x+=Math.sin(o.ph)*20*dt});s.b=s.b.filter(o=>o.y>-80);
+s.pt.forEach(q=>{q.x+=q.vx*dt;q.y+=q.vy*dt;q.l-=dt});s.pt=s.pt.filter(q=>q.l>0)},
+down(p){bp(p)},move(p){bp(p)},
+d(){bgGrad('#0f2a3a','#1c4a5a');s.b.forEach(o=>{x.beginPath();x.arc(o.x,o.y,o.r,0,7);x.fillStyle=`hsla(${o.h},70%,80%,.15)`;x.fill();x.strokeStyle=`hsla(${o.h},70%,85%,.7)`;x.lineWidth=2;x.stroke();circ(o.x-o.r*.35,o.y-o.r*.35,o.r*.15,'#fff8')});
+s.pt.forEach(q=>circ(q.x,q.y,3,`hsla(${q.h},80%,85%,${q.l*2})`));txt('แตกไปแล้ว '+s.n+' ฟอง',W/2,38,18,'#ffffff80')}},
+
+{n:'คลื่นเสียงฝน',ic:'🎵',z:'r',p:1,ds:'แตะที่ไหนก็ได้ให้เกิดระลอกคลื่นกับเสียงนุ่มๆ (ซ้าย = เสียงต่ำ ขวา = เสียงสูง)',
+i(){s={r:[],t:1}},
+u(dt){s.t-=dt;if(s.t<=0){s.t=1.5+R()*2;dr(R()*W,R()*H,.04)}s.r.forEach(o=>{o.r+=70*dt;o.a-=.28*dt});s.r=s.r.filter(o=>o.a>0)},
+down(p){dr(p.x,p.y,.15)},
+d(){bgGrad('#0b1330','#1a2a55');x.lineWidth=2;s.r.forEach(o=>{for(let j=0;j<3;j++){const r=o.r-j*14;if(r>0){x.beginPath();x.arc(o.x,o.y,r,0,7);x.strokeStyle=`hsla(${o.h},80%,75%,${Math.max(0,o.a*(1-j*.3))})`;x.stroke()}}})}},
+
+{n:'หายใจลึกๆ',ic:'🫁',z:'r',p:1,ds:'ทำตามวงกลม: หายใจเข้า 4 วิ กลั้น 4 วิ หายใจออก 6 วิ',
+i(){s={t:0}},u(dt){s.t+=dt},
+d(){bgGrad('#0a1f2b','#10353a');const c=s.t%14;let k,l;if(c<4){k=c/4;l='หายใจเข้า'}else if(c<8){k=1;l='กลั้นไว้'}else{k=1-(c-8)/6;l='หายใจออก'}
+k=k*k*(3-2*k);const r=50+k*Math.min(W,H)*.28,cx=W/2,cy=H/2;
+for(let j=3;j>=0;j--)circ(cx,cy,r+j*16,`rgba(110,240,205,${.06+.03*(3-j)})`);circ(cx,cy,r,'rgba(120,235,210,.55)');
+txt(l,cx,cy,28,'#06241f');txt('รอบที่ '+(Math.floor(s.t/14)+1),W/2,40,16,'#ffffff70')}},
+
+{n:'สวนดอกไม้',ic:'🌸',z:'r',p:1,ds:'แตะพื้นหญ้าเพื่อปลูกดอกไม้ แล้วดูมันค่อยๆ โตและโยกเบาๆ',
+i(){s={f:[],t:0}},
+u(dt){s.t+=dt;s.f.forEach(f=>f.a+=dt)},
+down(p){s.f.push({x:p.x,by:Math.max(H*.62,Math.min(H*.96,p.y)),h:70+R()*90,a:0,c:R()*360,sd:R()*6,n:5+(R()*4|0)});if(s.f.length>70)s.f.shift();s.f.sort((a,b)=>a.by-b.by)},
+d(){bgGrad('#bfe8ff','#f7f1d8');const q=x.createLinearGradient(0,H*.6,0,H);q.addColorStop(0,'#8fd18a');q.addColorStop(1,'#4f9f62');x.fillStyle=q;x.fillRect(0,H*.6,W,H*.4);
+s.f.forEach(f=>{const k=Math.min(1,f.a/2.5),e=1-(1-k)*(1-k),tx=f.x+Math.sin(s.t*1.2+f.sd)*5*e,ty=f.by-f.h*e;x.strokeStyle='#3f9b57';x.lineWidth=4;x.beginPath();x.moveTo(f.x,f.by);x.lineTo(tx,ty);x.stroke();
+if(k>.4){const b=(k-.4)/.6,r=(8+f.h*.1)*b;for(let j=0;j<f.n;j++){const a=j/f.n*6.283+f.sd;circ(tx+Math.cos(a)*r,ty+Math.sin(a)*r,r*.7,`hsl(${f.c} 85% 72%)`)}circ(tx,ty,r*.55,'#ffd95a')}});
+if(!s.f.length)txt('แตะพื้นหญ้าเพื่อปลูกดอกไม้ 🌱',W/2,H*.4,20,'#2d5a3d')}},
+
+{n:'วาดแสง 2 นิ้ว',ic:'✨',z:'r',p:2,ds:'ใช้ 2 นิ้ววาดพร้อมกันได้ แต่ละนิ้วมีสีของตัวเอง ภาพจะสะท้อนซ้าย-ขวา และค่อยๆ จางหายไป',
+i(){s={p:{}};x.fillStyle='#070716';x.fillRect(0,0,W,H);txt('วาดด้วย 2 นิ้วพร้อมกัน ✨',W/2,H/2,22,'#ffffffaa')},
+d(){x.fillStyle='rgba(7,7,22,.07)';x.fillRect(0,0,W,H)},
+down(p){const used=Object.values(s.p).map(o=>o.sl),sl=used.includes(0)?1:0;s.p[p.id]={x:p.x,y:p.y,sl,h:sl?320:190}},
+move(p){const o=s.p[p.id];if(!o)return;o.h+=.8;x.lineCap='round';x.lineWidth=5;x.strokeStyle=`hsl(${o.h%360} 90% 65%)`;x.shadowColor=x.strokeStyle;x.shadowBlur=14;x.beginPath();x.moveTo(o.x,o.y);x.lineTo(p.x,p.y);x.moveTo(W-o.x,o.y);x.lineTo(W-p.x,p.y);x.stroke();x.shadowBlur=0;o.x=p.x;o.y=p.y},
+up(p){delete s.p[p.id]}}
+];
+
+/* ---------- Menu & loop ---------- */
+const mk=z=>G.map((o,i)=>o.z==z?`<button class="card" onclick="go(${i})"><i>${o.ic}</i><b>${o.n}</b><span>${o.ds}</span><div class="tag${o.p==2?' two':''}">${o.p==2?'👆👆 เล่น 2 นิ้ว (2 ผู้เล่น)':'👆 1 นิ้ว'}</div></button>`:'').join('');
+$('gs').innerHTML=mk('s');$('gr').innerHTML=mk('r');
+function restart(){dn={};g.i()}
+function go(i){g=G[i];$('menu').style.display='none';cv.style.display='block';$('back').style.display='block';restart();
+const t=$('toast');t.textContent=g.n+' — '+g.ds;t.style.opacity=1;clearTimeout(tt);tt=setTimeout(()=>t.style.opacity=0,3000)}
+$('back').onclick=()=>{g=null;cv.style.display=$('back').style.display='none';$('toast').style.opacity=0;$('menu').style.display='block'};
+const pp=e=>({id:e.pointerId,x:e.clientX,y:e.clientY});
+cv.addEventListener('pointerdown',e=>{e.preventDefault();try{cv.setPointerCapture(e.pointerId)}catch(_){}dn[e.pointerId]=1;g&&g.down&&g.down(pp(e))});
+cv.addEventListener('pointermove',e=>{if(dn[e.pointerId]&&g&&g.move)g.move(pp(e))});
+['pointerup','pointercancel'].forEach(t=>cv.addEventListener(t,e=>{delete dn[e.pointerId];g&&g.up&&g.up(pp(e))}));
+cv.addEventListener('contextmenu',e=>e.preventDefault());
+function loop(t){const dt=Math.min(.05,(t-last)/1000);last=t;if(g){g.u&&g.u(dt);g.d&&g.d()}requestAnimationFrame(loop)}
+requestAnimationFrame(loop);
+</script></body></html>
